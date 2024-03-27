@@ -43,10 +43,16 @@ def send_request(data, token):
         "Authorization": f"Bearer {token}"
     }
     
-    print("Request body:", data)
-
-    response = requests.post(url, headers=headers, json=data, stream=True)
-    return response
+    for attempt in range(3):
+        try:
+            response = requests.post(url, headers=headers, json=data, stream=True)
+            return response
+        except requests.exceptions.ConnectionError as e:
+            print(f"Connection error on attempt {attempt + 1}: {e}")
+            if attempt < 2:
+                time.sleep(3)
+            else:
+                raise
 
 def process_response(response):
     chat_response = ""
@@ -85,10 +91,8 @@ def chat_with_ai():
         "stop": []
     }
 
-    ai_guidelines = {"role": "system", "content": "AI dilarang menggunakan bahasa vulgar dan eksplisit."}
-
     messages = [
-        {"role": "system", "content": "Kamu adalah asisten AI yang ramah dan sangat membantu."}
+        {"role": "system", "content": "Kamu adalah asisten AI bernama ChatGPT."}
     ]
 
     while True:
@@ -97,13 +101,15 @@ def chat_with_ai():
             break
         messages.append({"role": "user", "content": user_input})
         
+        messages.append({"role": "system", "content": "Ai harus menjawab menggunakan bahasa indonesia dengan gaya tsundere."})
+        
         if time.time() >= expires_at:
             token, expires_at = get_new_token()
 
         data = {
             "model": model_name,
             "parameters": parameters,
-            "messages": messages + [ai_guidelines],
+            "messages": messages,
             "user": "fZ4639Y3m2ds3KbFFhr7zQnayA62"
         }
         response = send_request(data, token)

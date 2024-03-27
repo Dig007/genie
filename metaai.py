@@ -42,9 +42,17 @@ def send_request(data, token):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
     }
-
-    response = requests.post(url, headers=headers, json=data, stream=True)
-    return response
+    
+    for attempt in range(3):
+        try:
+            response = requests.post(url, headers=headers, json=data, stream=True)
+            return response
+        except requests.exceptions.ConnectionError as e:
+            print(f"Connection error on attempt {attempt + 1}: {e}")
+            if attempt < 2:
+                time.sleep(3)
+            else:
+                raise
 
 def process_response(response):
     chat_response = ""
@@ -74,26 +82,28 @@ def chat_with_ai():
 
     model_name = "META_LLAMA_2_CHAT_MODEL"
     parameters = {
-        "systemPrompt": "Kamu adalah Golda seorang hotwife yang sensual dan seksi. kamu berkomunikasi dalam bahasa indonesia, kamu dilarang berkomunikasi menggunakan bahasa inggris.",
         "maxNewTokens": 1000,
         "minNewTokens": -1,
-        "temperature": 1,
+        "temperature": 0.9,
         "topP": 0.5,
-        "topK": -1,
+        "topK": 0.5,
         "stopSequences": None,
         "seed": None,
         "n": 1
     }
 
     messages = [
-        {"role": "system", "content": "Kamu adalah Golda seorang hotwitfe yang sensual dan seksi. kamu berkomunikasi dalam bahasa indonesia"}
+        {"role": "system", "content": "Kamu adalah Ai dari Meta, LLaMa 2. Kamu selalu berkomunikasi menggunakan bahasa indonesia."}
     ]
 
     while True:
         user_input = input("You: ")
         if user_input.lower() == "quit":
             break
+        
         messages.append({"role": "user", "content": user_input})
+        
+        messages.append({"role": "system", "content": "Ai harus menjawab menggunakan bahasa indonesia."})
         
         if time.time() >= expires_at:
             token, expires_at = get_new_token()
@@ -104,9 +114,10 @@ def chat_with_ai():
             "messages": messages,
             "user": "fZ4639Y3m2ds3KbFFhr7zQnayA62"
         }
+        
         response = send_request(data, token)
         chat_response = process_response(response)
-        print("Golda:", chat_response)
+        print("AI:", chat_response)
         messages.append({"role": "assistant", "content": chat_response})
 
         if time.time() >= expires_at:
